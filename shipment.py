@@ -1,4 +1,3 @@
-import logging
 from trytond.model import fields, dualmethod, ModelView, Workflow
 from trytond.pool import PoolMeta, Pool
 from trytond.transaction import Transaction
@@ -33,13 +32,6 @@ class Move(metaclass=PoolMeta):
             for production in productions:
                 if production.state == 'waiting':
                     cls.assign(production.origin.moves)
-        logging.info('Out of scope')
-        logging.info(out_of_scope)
-        logging.info('SUPER!')
-        logging.info(super)
-        logging.info(super())
-        logging.info(dir(super()))
-        logging.info(getattr(super(), 'assign_try', None))
         return super().assign_try(out_of_scope, with_childs, grouping)
 
     @classmethod
