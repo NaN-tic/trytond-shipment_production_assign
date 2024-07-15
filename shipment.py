@@ -14,39 +14,39 @@ class Move(metaclass=PoolMeta):
 
     @classmethod
     def assign_try(cls, moves, with_childs=True, grouping=('product',)):
-        if len(moves) > 0:
-            pool = Pool()
-            Production = pool.get('production')
-            productions = []
-            out_of_scope = []
+        pool = Pool()
+        Production = pool.get('production')
 
-            for move in moves:
-                linked = move.get_linked_production()
-                if linked:
-                    productions += linked
-                else:
-                    out_of_scope.append(move)
-            if productions:
-                Production.assign_try(productions)
-                for production in productions:
-                    if production.state == 'assigned':
-                        cls.assign(production.origin.moves)
-            return super().assign_try(out_of_scope, with_childs, grouping)
+        productions = []
+        out_of_scope = []
+        for move in moves:
+            linked = move.get_linked_production()
+            if linked:
+                productions += linked
+            else:
+                out_of_scope.append(move)
+        if productions:
+            for production in productions:
+                production.state = 'waiting'
+            Production.assign_try(productions)
+            for production in productions:
+                if production.state == 'waiting':
+                    cls.assign(production.origin.moves)
+        return super().assign_try(out_of_scope, with_childs, grouping)
 
     @classmethod
     def pack(cls, moves):
-        if(len(moves)> 0):
-            Production = Pool().get('production')
-            for move in moves:
-                linked = move.get_linked_production()
-                if linked:
-                    to_run = []
-                    for production in linked:
-                        if production.state == 'assigned':
-                            to_run.append(production)
-                    if to_run:
-                        Production.run(to_run)
-                        Production.done(to_run)
+        Production = Pool().get('production')
+        for move in moves:
+            linked = move.get_linked_production()
+            if linked:
+                to_run = []
+                for production in linked:
+                    if production.state == 'assigned':
+                        to_run.append(production)
+                if to_run:
+                    Production.run(to_run)
+                    Production.done(to_run)
 
 #si la produccio ha anat be, reservar moviment
 
@@ -58,6 +58,8 @@ class ShipmentOut(metaclass=PoolMeta):
     @Workflow.transition('picked')
     @set_employee('picked_by')
     def pick(cls, shipments):
+        Move = Pool().get('stock.move')
+
         productions = []
         for shipment in shipments:
             for move in shipment.moves:
@@ -72,6 +74,8 @@ class ShipmentOut(metaclass=PoolMeta):
     @Workflow.transition('packed')
     @set_employee('packed_by')
     def pack(cls, shipments):
+        Move = Pool().get('stock.move')
+
         productions = []
         for shipment in shipments:
             for move in shipment.moves:
@@ -80,3 +84,4 @@ class ShipmentOut(metaclass=PoolMeta):
                     productions += [move]
         Move.pack(productions)
         return super(ShipmentOut, cls).pack(shipments)
+
