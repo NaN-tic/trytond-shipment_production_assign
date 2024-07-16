@@ -6,10 +6,5 @@ from . import shipment
 
 def register():
     Pool.register(
-        shipment.ShipmentOut,
         shipment.Move,
         module='shipment_production_assign', type_='model')
-    Pool.register(
-        module='shipment_production_assign', type_='wizard')
-    Pool.register(
-        module='shipment_production_assign', type_='report')
