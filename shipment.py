@@ -1,7 +1,6 @@
-from trytond.model import fields, dualmethod, ModelView, Workflow
+from trytond.model import ModelView, Workflow
 from trytond.pool import PoolMeta, Pool
-from trytond.transaction import Transaction
-from trytond.modules.company.model import employee_field, set_employee
+from trytond.modules.company.model import set_employee
 
 
 class Move(metaclass=PoolMeta):
