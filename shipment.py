@@ -1,6 +1,5 @@
 from trytond.model import ModelView, Workflow
 from trytond.pool import PoolMeta, Pool
-from trytond.modules.company.model import set_employee
 
 
 class Move(metaclass=PoolMeta):
@@ -25,12 +24,25 @@ class Move(metaclass=PoolMeta):
             else:
                 out_of_scope.append(move)
         if productions:
+            to_save = []
             for production in productions:
-                production.state = 'waiting'
+                if production.state == 'draft':
+                    production.state = 'waiting'
+            Production.save(productions)
             Production.assign_try(productions)
             for production in productions:
-                if production.state == 'waiting':
-                    cls.assign(production.origin.moves)
+                if production.state != 'assigned':
+                    continue
+                if production.outputs:
+                    to_location = production.outputs[0].to_location
+                    for move in production.origin.moves:
+                        shipment = move.shipment
+                        for m2 in shipment.inventory_moves:
+                            if m2.origin == move:
+                                m2.from_location = to_location
+                                to_save.append(m2)
+            cls.save(to_save)
+
         return super().assign_try(out_of_scope, with_childs, grouping)
 
     @classmethod
