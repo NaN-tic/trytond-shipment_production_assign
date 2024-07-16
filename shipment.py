@@ -11,39 +11,55 @@ class Move(metaclass=PoolMeta):
             return self.origin.origin.productions
 
     @classmethod
+    def assign(cls, moves):
+        pool = Pool()
+        Production = pool.get('production')
+
+        super().assign(moves)
+
+        productions = []
+        for move in moves:
+            linked = move.get_linked_production()
+            if not linked:
+                continue
+            productions.extend(linked)
+
+        if productions:
+            Production.assign(productions)
+
+    @classmethod
     def assign_try(cls, moves, with_childs=True, grouping=('product',)):
         pool = Pool()
         Production = pool.get('production')
 
-        productions = []
+        success = True
+        mapping = {}
         out_of_scope = []
         for move in moves:
             linked = move.get_linked_production()
             if linked:
-                productions += linked
+                mapping[move] = linked[0]
             else:
                 out_of_scope.append(move)
-        if productions:
-            to_save = []
+        if mapping:
+            productions = mapping.values()
             for production in productions:
                 if production.state == 'draft':
                     production.state = 'waiting'
             Production.save(productions)
             Production.assign_try(productions)
-            for production in productions:
+
+            to_save = []
+            for move, production in mapping.items():
                 if production.state != 'assigned':
+                    success = False
                     continue
                 if production.outputs:
-                    to_location = production.outputs[0].to_location
-                    for move in production.origin.moves:
-                        shipment = move.shipment
-                        for m2 in shipment.inventory_moves:
-                            if m2.origin == move:
-                                m2.from_location = to_location
-                                to_save.append(m2)
+                    move.from_location = production.outputs[0].to_location
+                    to_save.append(move)
             cls.save(to_save)
 
-        return super().assign_try(out_of_scope, with_childs, grouping)
+        return super().assign_try(out_of_scope, with_childs, grouping) and success
 
     @classmethod
     @ModelView.button
