@@ -34,53 +34,21 @@ class Move(metaclass=PoolMeta):
         return super().assign_try(out_of_scope, with_childs, grouping)
 
     @classmethod
-    def pack(cls, moves):
+    @ModelView.button
+    @Workflow.transition('done')
+    def do(cls, moves):
         Production = Pool().get('production')
+
         for move in moves:
             linked = move.get_linked_production()
-            if linked:
-                to_run = []
-                for production in linked:
-                    if production.state == 'assigned':
-                        to_run.append(production)
-                if to_run:
-                    Production.run(to_run)
-                    Production.done(to_run)
-
-#si la produccio ha anat be, reservar moviment
-
-class ShipmentOut(metaclass=PoolMeta):
-    __name__ = 'stock.shipment.out'
-
-    @classmethod
-    @ModelView.button
-    @Workflow.transition('picked')
-    @set_employee('picked_by')
-    def pick(cls, shipments):
-        Move = Pool().get('stock.move')
-
-        productions = []
-        for shipment in shipments:
-            for move in shipment.moves:
-                linked = move.get_linked_production()
-                if linked:
-                    productions += [move]
-        Move.assign_try(productions, with_childs=True, grouping=('product',))
-        return super(ShipmentOut, cls).pick(shipments)
-
-    @classmethod
-    @ModelView.button
-    @Workflow.transition('packed')
-    @set_employee('packed_by')
-    def pack(cls, shipments):
-        Move = Pool().get('stock.move')
-
-        productions = []
-        for shipment in shipments:
-            for move in shipment.moves:
-                linked = move.get_linked_production()
-                if linked:
-                    productions += [move]
-        Move.pack(productions)
-        return super(ShipmentOut, cls).pack(shipments)
-
+            if not linked:
+                continue
+            for production in linked:
+                if production.state == 'assigned':
+                    Production.run([production])
+                if production.state == 'running':
+                    Production.done([production])
+                if production.state == 'done':
+                    if production.outputs:
+                        move.lot = production.outputs[0].lot
+        super().do(moves)
