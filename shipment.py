@@ -75,7 +75,7 @@ class Move(metaclass=PoolMeta):
                 if production.state == 'assigned':
                     Production.run([production])
                 if production.state == 'running':
-                    Production.done([production])
+                    Production.do([production])
                 if production.state == 'done':
                     if production.outputs:
                         move.lot = production.outputs[0].lot
